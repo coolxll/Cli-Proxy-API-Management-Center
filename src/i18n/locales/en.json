@@ -104,6 +104,7 @@
     "usage_stats": "Usage Statistics",
     "config_management": "Config Management",
     "logs": "Logs Viewer",
+    "traffic_logs": "Traffic Audit",
     "system_info": "Management Center Info"
   },
   "dashboard": {
@@ -840,6 +841,24 @@
     "description": "Monitor OAuth quota status for Antigravity, Codex, and Gemini CLI credentials.",
     "refresh_files": "Refresh auth files",
     "refresh_files_and_quota": "Refresh files & quota"
+  },
+  "traffic_logs": {
+    "title": "Traffic Audit",
+    "request_id": "Request ID",
+    "timestamp": "Time",
+    "method": "Method",
+    "path": "Path",
+    "status": "Status",
+    "ip": "Client IP",
+    "latency": "Latency",
+    "tokens": "Tokens",
+    "model": "Model",
+    "auth": "Auth",
+    "filter_model": "Filter Model",
+    "filter_status": "Filter Status",
+    "loading": "Loading traffic logs...",
+    "empty": "No audit records found",
+    "latency_chart": "Response Latency Trend (ms)"
   },
   "system_info": {
     "title": "Management Center Info",

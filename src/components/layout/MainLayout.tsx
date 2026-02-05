@@ -26,6 +26,7 @@ import {
   IconShield,
   IconSlidersHorizontal,
   IconTimer,
+  IconActivity,
 } from '@/components/ui/icons';
 import { INLINE_LOGO_JPEG } from '@/assets/logoInline';
 import {
@@ -47,6 +48,7 @@ const sidebarIcons: Record<string, ReactNode> = {
   oauth: <IconShield size={18} />,
   quota: <IconTimer size={18} />,
   usage: <IconChartLine size={18} />,
+  trafficLogs: <IconActivity size={18} />,
   config: <IconSettings size={18} />,
   logs: <IconScrollText size={18} />,
   system: <IconInfo size={18} />,
@@ -364,6 +366,7 @@ export function MainLayout() {
     { path: '/oauth', label: t('nav.oauth', { defaultValue: 'OAuth' }), icon: sidebarIcons.oauth },
     { path: '/quota', label: t('nav.quota_management'), icon: sidebarIcons.quota },
     { path: '/usage', label: t('nav.usage_stats'), icon: sidebarIcons.usage },
+    { path: '/traffic-logs', label: t('nav.traffic_logs'), icon: sidebarIcons.trafficLogs },
     { path: '/config', label: t('nav.config_management'), icon: sidebarIcons.config },
     ...(config?.loggingToFile
       ? [{ path: '/logs', label: t('nav.logs'), icon: sidebarIcons.logs }]

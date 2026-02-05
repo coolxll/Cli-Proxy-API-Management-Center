@@ -26,3 +26,6 @@ export type { ModelStatsCardProps, ModelStat } from './ModelStatsCard';
 
 export { PriceSettingsCard } from './PriceSettingsCard';
 export type { PriceSettingsCardProps } from './PriceSettingsCard';
+
+export { TrafficLogsTable } from './TrafficLogsTable';
+export type { TrafficLogsTableProps } from './TrafficLogsTable';

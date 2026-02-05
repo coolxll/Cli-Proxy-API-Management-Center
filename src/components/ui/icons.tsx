@@ -322,3 +322,11 @@ export function IconLayoutDashboard({ size = 20, ...props }: IconProps) {
     </svg>
   );
 }
+
+export function IconActivity({ size = 20, ...props }: IconProps) {
+  return (
+    <svg {...baseSvgProps} width={size} height={size} {...props}>
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+    </svg>
+  );
+}

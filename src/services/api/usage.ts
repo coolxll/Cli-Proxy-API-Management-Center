@@ -4,6 +4,7 @@
 
 import { apiClient } from './client';
 import { computeKeyStats, KeyStats } from '@/utils/usage';
+import { TrafficLogsResponse } from '@/types';
 
 const USAGE_TIMEOUT_MS = 60 * 1000;
 
@@ -38,6 +39,12 @@ export const usageApi = {
    */
   importUsage: (payload: unknown) =>
     apiClient.post<UsageImportResponse>('/usage/import', payload, { timeout: USAGE_TIMEOUT_MS }),
+
+  /**
+   * 获取流式审计日志
+   */
+  getTrafficLogs: (params: { page?: number; size?: number; model?: string; status?: number }) =>
+    apiClient.get<TrafficLogsResponse>('/traffic-logs', { params, timeout: USAGE_TIMEOUT_MS }),
 
   /**
    * 计算密钥成功/失败统计，必要时会先获取 usage 数据

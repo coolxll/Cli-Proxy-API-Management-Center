@@ -50,3 +50,26 @@ export interface ModelPrice {
   inputPricePer1M: number;
   outputPricePer1M: number;
 }
+// 流量记录
+export interface TrafficLog {
+  request_id: string;
+  timestamp: string;
+  model: string;
+  auth_index: string;
+  method: string;
+  path: string;
+  status_code: number;
+  client_ip: string;
+  latency_ms: number;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+}
+
+// 流量日志分页响应
+export interface TrafficLogsResponse {
+  logs: TrafficLog[];
+  total: number;
+  page: number;
+  size: number;
+}
