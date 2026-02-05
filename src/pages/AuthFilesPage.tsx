@@ -25,11 +25,12 @@ import { ANTIGRAVITY_CONFIG, CODEX_CONFIG, GEMINI_CLI_CONFIG } from '@/component
 import { useAuthStore, useNotificationStore, useQuotaStore, useThemeStore } from '@/stores';
 import { authFilesApi, usageApi } from '@/services/api';
 import { apiClient } from '@/services/api/client';
-import type { AuthFileItem, OAuthModelAliasEntry } from '@/types';
+import type { AuthFileItem, OAuthModelAliasEntry, TrafficLog } from '@/types';
 import { getStatusFromError, resolveAuthProvider } from '@/utils/quota';
 import {
   calculateStatusBarData,
   collectUsageDetails,
+  injectUsageDetails,
   normalizeUsageSourceId,
   type KeyStatBucket,
   type KeyStats,
@@ -490,8 +491,32 @@ export function AuthFilesPage() {
     if (loadingKeyStatsRef.current) return;
     loadingKeyStatsRef.current = true;
     try {
-      const usageResponse = await usageApi.getUsage();
+      const [usageResponse, logsRes] = await Promise.all([
+        usageApi.getUsage(),
+        usageApi.getTrafficLogs({ page: 1, size: 2000 })
+      ]);
+
       const usageData = usageResponse?.usage ?? usageResponse;
+
+      // Backfill details from logs if missing
+      if (logsRes && logsRes.logs) {
+        const backfillDetails: UsageDetail[] = logsRes.logs.map((log: TrafficLog) => ({
+          timestamp: log.timestamp,
+          source: '',
+          auth_index: Number(log.auth_index) || 0,
+          tokens: {
+            input_tokens: log.input_tokens || 0,
+            output_tokens: log.output_tokens || 0,
+            reasoning_tokens: 0,
+            cached_tokens: 0,
+            total_tokens: log.total_tokens || 0
+          },
+          failed: log.status_code >= 400,
+          __modelName: log.model || 'unknown'
+        }));
+        injectUsageDetails(usageData, backfillDetails);
+      }
+
       const stats = await usageApi.getKeyStats(usageData);
       setKeyStats(stats);
       // 收集 usage 明细用于状态栏

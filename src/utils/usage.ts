@@ -542,6 +542,11 @@ export function getApiStats(usageData: any, modelPrices: Record<string, ModelPri
   const result: ApiStats[] = [];
 
   Object.entries(apis as Record<string, any>).forEach(([endpoint, apiData]) => {
+    // Skip internal backfill data
+    if (endpoint === '__chart_data_backfill__') {
+      return;
+    }
+
     const models: Record<string, { requests: number; tokens: number }> = {};
     let totalCost = 0;
 
@@ -1047,4 +1052,46 @@ export function computeKeyStats(usageData: any, masker: (val: string) => string 
     bySource: sourceStats,
     byAuthIndex: authIndexStats
   };
+}
+
+/**
+ * 注入补充的使用明细数据
+ * 用于当后端返回的 usage 数据缺少 details 时，使用流量日志进行回填
+ */
+export function injectUsageDetails(usage: any, details: UsageDetail[]): any {
+  if (!usage || !details || details.length === 0) return usage;
+
+  // 如果 usage 中已经有较多 details，则不进行注入，避免重复
+  let existingCount = 0;
+  const apis = usage.apis || {};
+  Object.values(apis as Record<string, any>).forEach((api) => {
+    Object.values(api?.models || {} as Record<string, any>).forEach((model) => {
+      if (Array.isArray(model?.details)) {
+        existingCount += model.details.length;
+      }
+    });
+  });
+
+  if (existingCount > 10) {
+    return usage;
+  }
+
+  if (!usage.apis) usage.apis = {};
+  const targetApis = usage.apis;
+
+  const backfillKey = '__chart_data_backfill__';
+  if (!targetApis[backfillKey]) {
+    targetApis[backfillKey] = { models: {} };
+  }
+  const backfillModels = targetApis[backfillKey].models;
+
+  details.forEach((detail) => {
+    const modelName = detail.__modelName || 'unknown';
+    if (!backfillModels[modelName]) {
+      backfillModels[modelName] = { details: [] };
+    }
+    backfillModels[modelName].details.push(detail);
+  });
+
+  return usage;
 }
