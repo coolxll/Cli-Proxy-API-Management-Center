@@ -63,7 +63,7 @@ export function TrafficLogsTable({ logs, loading }: TrafficLogsTableProps) {
                         <tr key={log.request_id} className={styles.tr}>
                             <td className={styles.td}>
                                 <div title={log.request_id}>{formatDateTime(log.timestamp)}</div>
-                                <div className={styles.requestId}>{log.request_id.slice(0, 8)}...</div>
+                                <div className={styles.requestId} title={log.request_id}>{log.request_id}</div>
                             </td>
                             <td className={styles.td}>
                                 <span className={styles.method}>{log.method}</span>

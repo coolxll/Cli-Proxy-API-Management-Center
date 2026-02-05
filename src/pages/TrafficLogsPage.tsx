@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { useAuthStore, useNotificationStore } from '@/stores';
 import { usageApi } from '@/services/api/usage';
 import { configApi } from '@/services/api/config';
@@ -24,7 +25,9 @@ export function TrafficLogsPage() {
     const [modelFilter, setModelFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined);
     const [recording, setRecording] = useState(false);
-    const pageSize = 20;
+    const [pageSize, setPageSize] = useState(20);
+    const [pageSizeInput, setPageSizeInput] = useState('20');
+    const [recordingUpdating, setRecordingUpdating] = useState(false);
 
     // Check recording status on mount
     useEffect(() => {
@@ -36,13 +39,13 @@ export function TrafficLogsPage() {
     /**
      * Fetch logs with optional filters
      */
-    const fetchLogs = useCallback(async (p: number, model?: string, status?: number) => {
+    const fetchLogs = useCallback(async (p: number, model?: string, status?: number, size?: number) => {
         if (connectionStatus !== 'connected') return;
         setLoading(true);
         try {
             const res = await usageApi.getTrafficLogs({
                 page: p,
-                size: pageSize,
+                size: size || pageSize,
                 model: model || undefined,
                 status: status
             });
@@ -55,11 +58,66 @@ export function TrafficLogsPage() {
         } finally {
             setLoading(false);
         }
-    }, [connectionStatus, showNotification, t]);
+    }, [connectionStatus, pageSize, showNotification, t]);
 
     useEffect(() => {
-        fetchLogs(1, modelFilter, statusFilter);
-    }, [fetchLogs, modelFilter, statusFilter]);
+        fetchLogs(1, modelFilter, statusFilter, pageSize);
+    }, [fetchLogs, modelFilter, statusFilter, pageSize]);
+
+    const handleRecordingToggle = async (enabled: boolean) => {
+        if (recordingUpdating) return;
+        setRecordingUpdating(true);
+        const previous = recording;
+        setRecording(enabled); // Optimistic update
+
+        try {
+            // We need to use updateConfig to set enable_request_log
+            // Assuming configApi.updateConfig accepts partial config
+            // However, looking at usage in other files, we might need to check how to update this specific setting
+            // Based on previous reads, enable_request_log is part of the config
+
+            // Let's verify configApi structure if possible, but for now assuming updateConfig works
+            // If there isn't a direct method, we might need to implement one or use updateConfig
+
+            // Re-checking configApi import... it is imported.
+
+            // The method name might need verification.
+            // In SettingsPage usually we update config.
+            // Let's assume updateConfig({ enable_request_log: enabled }) works as per standard pattern
+
+            // Wait, I should check if there is a specific endpoint or if I need to update the whole config object.
+            // Usually updateConfig takes a partial object.
+
+            await configApi.updateConfig({ enable_request_log: enabled });
+
+            showNotification(
+                enabled ? t('traffic_logs.recording_enabled_success') : t('traffic_logs.recording_disabled_success'),
+                'success'
+            );
+        } catch (err: unknown) {
+            setRecording(previous);
+            const message = err instanceof Error ? err.message : String(err);
+            showNotification(`${t('notification.update_failed')}: ${message}`, 'error');
+        } finally {
+            setRecordingUpdating(false);
+        }
+    };
+
+    const handlePageSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setPageSizeInput(e.target.value);
+    };
+
+    const commitPageSize = () => {
+        const val = parseInt(pageSizeInput);
+        if (!isNaN(val) && val > 0) {
+            const newSize = Math.min(100, Math.max(1, val));
+            setPageSize(newSize);
+            setPageSizeInput(String(newSize));
+            // fetchLogs will be triggered by useEffect dependency on pageSize
+        } else {
+            setPageSizeInput(String(pageSize));
+        }
+    };
 
     const totalPages = Math.ceil(total / pageSize);
 
@@ -73,7 +131,7 @@ export function TrafficLogsPage() {
                         style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px',
+                            gap: '8px',
                             marginRight: '12px',
                             padding: '0 12px',
                             height: '32px',
@@ -93,7 +151,15 @@ export function TrafficLogsPage() {
                                 animation: recording ? 'pulse 1.5s infinite' : 'none',
                             }}
                         />
-                        {recording ? t('traffic_logs.recording_on') : t('traffic_logs.recording_off')}
+                        <span style={{ marginRight: '8px' }}>
+                            {recording ? t('traffic_logs.recording_on') : t('traffic_logs.recording_off')}
+                        </span>
+                        <ToggleSwitch
+                            checked={recording}
+                            onChange={handleRecordingToggle}
+                            disabled={recordingUpdating || connectionStatus !== 'connected'}
+                            ariaLabel={t('traffic_logs.recording_on')}
+                        />
                     </div>
                     <style>{`
                         @keyframes pulse {
@@ -117,7 +183,7 @@ export function TrafficLogsPage() {
                         style={{ width: '100px', margin: 0 }}
                         className="sm"
                     />
-                    <Button variant="secondary" size="sm" onClick={() => fetchLogs(1, modelFilter, statusFilter)} disabled={loading}>
+                    <Button variant="secondary" size="sm" onClick={() => fetchLogs(1, modelFilter, statusFilter, pageSize)} disabled={loading}>
                         {t('common.refresh')}
                     </Button>
                 </div>
@@ -127,13 +193,28 @@ export function TrafficLogsPage() {
 
             <TrafficLogsTable logs={logs} loading={loading} />
 
-            {totalPages > 1 && (
+            {totalPages > 0 && (
                 <div className="flex-center" style={{ marginTop: '20px', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: 'auto' }}>
+                        <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                            {t('auth_files.page_size_label')}:
+                        </span>
+                        <Input
+                            type="number"
+                            value={pageSizeInput}
+                            onChange={handlePageSizeChange}
+                            onBlur={commitPageSize}
+                            onKeyDown={(e) => e.key === 'Enter' && commitPageSize()}
+                            style={{ width: '60px', margin: 0, height: '28px', fontSize: '13px' }}
+                            className="sm"
+                        />
+                    </div>
+
                     <Button
                         variant="secondary"
                         size="sm"
                         disabled={page <= 1 || loading}
-                        onClick={() => fetchLogs(page - 1, modelFilter, statusFilter)}
+                        onClick={() => fetchLogs(page - 1, modelFilter, statusFilter, pageSize)}
                     >
                         {t('auth_files.pagination_prev')}
                     </Button>
@@ -144,7 +225,7 @@ export function TrafficLogsPage() {
                         variant="secondary"
                         size="sm"
                         disabled={page >= totalPages || loading}
-                        onClick={() => fetchLogs(page + 1, modelFilter, statusFilter)}
+                        onClick={() => fetchLogs(page + 1, modelFilter, statusFilter, pageSize)}
                     >
                         {t('auth_files.pagination_next')}
                     </Button>

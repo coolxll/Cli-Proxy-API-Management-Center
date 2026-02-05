@@ -856,6 +856,11 @@
     "auth": "Auth",
     "filter_model": "Filter Model",
     "filter_status": "Filter Status",
+    "recording_on": "Recording On",
+    "recording_off": "Recording Off",
+    "recording_enabled_success": "Traffic audit logs enabled",
+    "recording_disabled_success": "Traffic audit logs disabled",
+    "log_not_found_hint": "Detail log not found. Please ensure audit logging was enabled.",
     "loading": "Loading traffic logs...",
     "empty": "No audit records found",
     "latency_chart": "Response Latency Trend (ms)"

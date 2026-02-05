@@ -856,6 +856,11 @@
     "auth": "凭证",
     "filter_model": "过滤模型",
     "filter_status": "过滤状态",
+    "recording_on": "审计已开启",
+    "recording_off": "审计已关闭",
+    "recording_enabled_success": "已开启流量审计日志",
+    "recording_disabled_success": "已关闭流量审计日志",
+    "log_not_found_hint": "未找到该请求的详细日志，请确认当时已开启审计功能。",
     "loading": "正在加载流量日志...",
     "empty": "暂无审计日志记录",
     "latency_chart": "响应耗时趋势 (ms)"
