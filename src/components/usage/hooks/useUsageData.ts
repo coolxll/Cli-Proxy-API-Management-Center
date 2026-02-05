@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNotificationStore } from '@/stores';
 import { usageApi } from '@/services/api/usage';
-import { loadModelPrices, saveModelPrices, type ModelPrice } from '@/utils/usage';
+import { loadModelPrices, saveModelPrices, type ModelPrice, type UsageDetail } from '@/utils/usage';
+import { TrafficLog } from '@/types';
 
 export interface UsagePayload {
   total_requests?: number;
@@ -28,6 +29,75 @@ export interface UseUsageDataReturn {
   importing: boolean;
 }
 
+function enrichUsageWithLogs(usage: UsagePayload, logs: TrafficLog[]) {
+  if (!usage || !logs || logs.length === 0) return;
+
+  if (!usage.apis) usage.apis = {};
+  const apis = usage.apis as Record<string, any>;
+
+  // Check if we already have significant details
+  let detailsCount = 0;
+  for (const api of Object.values(apis)) {
+    for (const model of Object.values(api?.models || {}) as any[]) {
+      if (Array.isArray(model?.details)) {
+        detailsCount += model.details.length;
+      }
+    }
+  }
+
+  // If we have a reasonable amount of details, assume backend provided them
+  // and we shouldn't mix in logs (to avoid duplication).
+  // Threshold is arbitrary, but if < 10 and we have logs, likely backend stripped details.
+  if (detailsCount > 10) {
+    return;
+  }
+
+  // Group logs by path and model
+  logs.forEach(log => {
+    const path = log.path || 'unknown';
+    const modelName = log.model || 'unknown';
+
+    // Try to find matching existing entry
+    let apiEntry = apis[path];
+    if (!apiEntry) {
+        // If exact match fails, try to find one that ends with this path (basic fuzzy match)
+        // or just create new one
+        apiEntry = { models: {} };
+        apis[path] = apiEntry;
+    }
+
+    if (!apiEntry.models) apiEntry.models = {};
+
+    let modelEntry = apiEntry.models[modelName];
+    if (!modelEntry) {
+        modelEntry = { details: [] };
+        apiEntry.models[modelName] = modelEntry;
+    }
+
+    if (!Array.isArray(modelEntry.details)) {
+        modelEntry.details = [];
+    }
+
+    // Add detail
+    const detail: UsageDetail = {
+        timestamp: log.timestamp,
+        source: '', // Logs don't capture source key currently
+        auth_index: Number(log.auth_index) || 0,
+        tokens: {
+            input_tokens: log.input_tokens || 0,
+            output_tokens: log.output_tokens || 0,
+            reasoning_tokens: 0,
+            cached_tokens: 0,
+            total_tokens: log.total_tokens || 0
+        },
+        failed: log.status_code >= 400,
+        __modelName: modelName
+    };
+
+    modelEntry.details.push(detail);
+  });
+}
+
 export function useUsageData(): UseUsageDataReturn {
   const { t } = useTranslation();
   const { showNotification } = useNotificationStore();
@@ -44,8 +114,20 @@ export function useUsageData(): UseUsageDataReturn {
     setLoading(true);
     setError('');
     try {
-      const data = await usageApi.getUsage();
-      const payload = data?.usage ?? data;
+      // Parallel fetch usage and traffic logs
+      // We fetch a larger page size for logs to get good chart data
+      const [usageData, logsRes] = await Promise.all([
+          usageApi.getUsage(),
+          usageApi.getTrafficLogs({ page: 1, size: 2000 })
+      ]);
+
+      const payload = usageData?.usage ?? usageData;
+
+      // Enrich payload with logs if details are missing
+      if (logsRes && logsRes.logs) {
+          enrichUsageWithLogs(payload, logsRes.logs);
+      }
+
       setUsage(payload);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : t('usage_stats.loading_error');
