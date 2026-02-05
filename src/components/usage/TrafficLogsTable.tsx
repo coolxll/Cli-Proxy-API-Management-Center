@@ -92,9 +92,12 @@ export function TrafficLogsTable({ logs, loading }: TrafficLogsTableProps) {
                             <td className={styles.td}>
                                 <div className={styles.tokens}>
                                     {log.total_tokens > 0 ? (
-                                        <span title={`I: ${log.input_tokens} / O: ${log.output_tokens}`}>
-                                            {log.total_tokens}
-                                        </span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', fontSize: '12px' }}>
+                                            <span>{log.total_tokens}</span>
+                                            {(log.input_tokens > 0 || log.output_tokens > 0) && (
+                                                <span style={{ opacity: 0.6 }}>({log.input_tokens}/{log.output_tokens})</span>
+                                            )}
+                                        </div>
                                     ) : (
                                         '-'
                                     )}

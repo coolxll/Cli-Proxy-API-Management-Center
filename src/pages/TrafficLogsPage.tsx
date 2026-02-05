@@ -1,38 +1,13 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler,
-    ChartOptions
-} from 'chart.js';
-import { Line } from 'react-chartjs-2';
-import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuthStore, useNotificationStore } from '@/stores';
 import { usageApi } from '@/services/api/usage';
+import { configApi } from '@/services/api/config';
 import { TrafficLog } from '@/types';
 import { TrafficLogsTable } from '@/components/usage/TrafficLogsTable';
 import styles from './UsagePage.module.scss'; // Reuse UsagePage styles for layout
-
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler
-);
 
 /**
  * Page component for displaying and auditing traffic logs
@@ -48,19 +23,28 @@ export function TrafficLogsPage() {
     const [page, setPage] = useState(1);
     const [modelFilter, setModelFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined);
+    const [recording, setRecording] = useState(false);
     const pageSize = 20;
 
-    /**
-     * Formatter for time display in charts, memoized for performance
-     */
-    const timeFormatter = useMemo(() => 
-        new Intl.DateTimeFormat(undefined, { 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            second: '2-digit', 
-            hour12: false 
-        }), 
-    []);
+    // Check recording status on mount
+    useEffect(() => {
+        if (connectionStatus === 'connected') {
+            configApi.getEnableRequestLog().then(setRecording).catch(console.error);
+        }
+    }, [connectionStatus]);
+
+    const toggleRecording = async () => {
+        try {
+            await configApi.updateEnableRequestLog(!recording);
+            setRecording(!recording);
+            showNotification(
+                !recording ? t('traffic_logs.recording_started') : t('traffic_logs.recording_stopped'),
+                'success'
+            );
+        } catch (err) {
+            showNotification(t('traffic_logs.recording_toggle_failed'), 'error');
+        }
+    };
 
     /**
      * Fetch logs with optional filters
@@ -69,8 +53,8 @@ export function TrafficLogsPage() {
         if (connectionStatus !== 'connected') return;
         setLoading(true);
         try {
-            const res = await usageApi.getTrafficLogs({ 
-                page: p, 
+            const res = await usageApi.getTrafficLogs({
+                page: p,
                 size: pageSize,
                 model: model || undefined,
                 status: status
@@ -90,53 +74,6 @@ export function TrafficLogsPage() {
         fetchLogs(1, modelFilter, statusFilter);
     }, [fetchLogs, modelFilter, statusFilter]);
 
-    // Transform logs for latency chart
-    const chartData = useMemo(() => {
-        const reversedLogs = [...logs].reverse();
-        return {
-            labels: reversedLogs.map((l) => {
-                try {
-                    return timeFormatter.format(new Date(l.timestamp));
-                } catch {
-                    return '';
-                }
-            }),
-            datasets: [
-                {
-                    label: t('traffic_logs.latency'),
-                    data: reversedLogs.map((l) => l.latency_ms),
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 2,
-                },
-            ],
-        };
-    }, [logs, t, timeFormatter]);
-
-    const chartOptions: ChartOptions<'line'> = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                mode: 'index',
-                intersect: false,
-            },
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                title: { display: true, text: 'ms' },
-                ticks: { font: { size: 10 } },
-            },
-            x: {
-                display: false, // Hide x-axis labels for density
-            },
-        },
-    };
-
     const totalPages = Math.ceil(total / pageSize);
 
     return (
@@ -144,6 +81,31 @@ export function TrafficLogsPage() {
             <div className={styles.header}>
                 <h1 className={styles.pageTitle}>{t('nav.traffic_logs')}</h1>
                 <div className={styles.headerActions}>
+                    <Button
+                        variant={recording ? 'danger' : 'secondary'}
+                        size="sm"
+                        onClick={toggleRecording}
+                        className={styles.recordingButton}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '12px' }}
+                    >
+                        <div
+                            style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                backgroundColor: recording ? '#fff' : '#666',
+                                animation: recording ? 'pulse 1.5s infinite' : 'none',
+                            }}
+                        />
+                        {recording ? t('traffic_logs.recording_on') : t('traffic_logs.recording_off')}
+                    </Button>
+                    <style>{`
+                        @keyframes pulse {
+                            0% { opacity: 1; }
+                            50% { opacity: 0.5; }
+                            100% { opacity: 1; }
+                        }
+                    `}</style>
                     <Input
                         placeholder={t('traffic_logs.filter_model')}
                         value={modelFilter}
@@ -165,19 +127,7 @@ export function TrafficLogsPage() {
                 </div>
             </div>
 
-            <div className={styles.chartsGrid} style={{ gridTemplateColumns: '1fr', marginBottom: '24px' }}>
-                <Card title={t('traffic_logs.latency_chart')}>
-                    <div style={{ height: '200px', width: '100%' }}>
-                        {loading && logs.length === 0 ? (
-                            <div className="flex-center" style={{ height: '100%' }}>
-                                <LoadingSpinner size={24} />
-                            </div>
-                        ) : (
-                            <Line data={chartData} options={chartOptions} />
-                        )}
-                    </div>
-                </Card>
-            </div>
+
 
             <TrafficLogsTable logs={logs} loading={loading} />
 

@@ -64,6 +64,16 @@ export const configApi = {
   updateRequestLog: (enabled: boolean) => apiClient.put('/request-log', { value: enabled }),
 
   /**
+   * 流量审计数据库记录开关 (Recording Toggle)
+   */
+  getEnableRequestLog: async (): Promise<boolean> => {
+    const data = await apiClient.get('/enable-request-log');
+    return data?.['enable-request-log'] ?? data?.enableRequestLog ?? false;
+  },
+
+  updateEnableRequestLog: (enabled: boolean) => apiClient.put('/enable-request-log', { value: enabled }),
+
+  /**
    * 写日志到文件开关
    */
   updateLoggingToFile: (enabled: boolean) => apiClient.put('/logging-to-file', { value: enabled }),
