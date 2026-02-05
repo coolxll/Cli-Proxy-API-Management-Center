@@ -29,22 +29,9 @@ export function TrafficLogsPage() {
     // Check recording status on mount
     useEffect(() => {
         if (connectionStatus === 'connected') {
-            configApi.getEnableRequestLog().then(setRecording).catch(console.error);
+            configApi.getEnableRequestLog().then(setRecording).catch(() => setRecording(false));
         }
     }, [connectionStatus]);
-
-    const toggleRecording = async () => {
-        try {
-            await configApi.updateEnableRequestLog(!recording);
-            setRecording(!recording);
-            showNotification(
-                !recording ? t('traffic_logs.recording_started') : t('traffic_logs.recording_stopped'),
-                'success'
-            );
-        } catch (err) {
-            showNotification(t('traffic_logs.recording_toggle_failed'), 'error');
-        }
-    };
 
     /**
      * Fetch logs with optional filters
@@ -81,24 +68,33 @@ export function TrafficLogsPage() {
             <div className={styles.header}>
                 <h1 className={styles.pageTitle}>{t('nav.traffic_logs')}</h1>
                 <div className={styles.headerActions}>
-                    <Button
-                        variant={recording ? 'danger' : 'secondary'}
-                        size="sm"
-                        onClick={toggleRecording}
-                        className={styles.recordingButton}
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '12px' }}
+                    <div
+                        className={styles.recordingStatus}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            marginRight: '12px',
+                            padding: '0 12px',
+                            height: '32px',
+                            borderRadius: 'var(--radius-md)',
+                            backgroundColor: 'var(--bg-secondary)',
+                            border: '1px solid var(--border-color)',
+                            fontSize: '13px',
+                            color: 'var(--text-secondary)'
+                        }}
                     >
                         <div
                             style={{
                                 width: '8px',
                                 height: '8px',
                                 borderRadius: '50%',
-                                backgroundColor: recording ? '#fff' : '#666',
+                                backgroundColor: recording ? '#22c55e' : '#9ca3af',
                                 animation: recording ? 'pulse 1.5s infinite' : 'none',
                             }}
                         />
                         {recording ? t('traffic_logs.recording_on') : t('traffic_logs.recording_off')}
-                    </Button>
+                    </div>
                     <style>{`
                         @keyframes pulse {
                             0% { opacity: 1; }
