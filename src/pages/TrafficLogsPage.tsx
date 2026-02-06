@@ -88,7 +88,7 @@ export function TrafficLogsPage() {
             // Wait, I should check if there is a specific endpoint or if I need to update the whole config object.
             // Usually updateConfig takes a partial object.
 
-            await configApi.updateConfig({ enable_request_log: enabled });
+            await configApi.updateEnableRequestLog(enabled);
 
             showNotification(
                 enabled ? t('traffic_logs.recording_enabled_success') : t('traffic_logs.recording_disabled_success'),

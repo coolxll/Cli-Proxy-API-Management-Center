@@ -1065,8 +1065,8 @@ export function injectUsageDetails(usage: any, details: UsageDetail[]): any {
   let existingCount = 0;
   const apis = usage.apis || {};
   Object.values(apis as Record<string, any>).forEach((api) => {
-    Object.values(api?.models || {} as Record<string, any>).forEach((model) => {
-      if (Array.isArray(model?.details)) {
+    Object.values(api?.models || {}).forEach((model: any) => {
+      if (model && typeof model === 'object' && Array.isArray(model.details)) {
         existingCount += model.details.length;
       }
     });

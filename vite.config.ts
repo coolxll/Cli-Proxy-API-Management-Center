@@ -40,7 +40,8 @@ export default defineConfig({
   plugins: [
     react(),
     viteSingleFile({
-      removeViteModuleLoader: true
+      removeViteModuleLoader: true,
+      entryName: 'management'
     })
   ],
   define: {
